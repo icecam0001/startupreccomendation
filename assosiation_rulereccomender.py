@@ -2,22 +2,7 @@
 from utils import total_compute, load_data
 import math
 class AssociationRulesRecommender:
-    """
-    Recommends projects based on co-contribution patterns
-    
-    TODO:
-    1. For each project pair (i,j), calculate:
-       - Count users who contributed to both
-       - Count users who contributed to j
-       - Score = P(i|j) = (both_count / j_count)
-    2. For a given project, find others with highest association scores
-    
-    Hints:
-    - Store scores in a dictionary {(proj1, proj2): score}
-    - Consider minimum support (ignore very rare co-occurrences)
-    - Remember to handle divide-by-zero cases
-    """
-    #figure out how to improt these functinos from these files
+  
 
     def recommend(self, project_id, numberofrecs=10, lowoccpenalty=0.5):
         _, userinteractiondict = load_data()
