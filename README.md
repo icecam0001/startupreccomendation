@@ -34,6 +34,47 @@ ranking[i] = math.log10(post_interactions)/(hours_since_post**gravity)
 
 ## Technical Details
 
+
+## What's Inside
+This repository contains an early proof of concept for several recommender systems I've been experimenting with. Let's break down each approach and why it matters:
+
+### Association Rule Mining
+The `AssociationRulesRecommender` looks at co-contribution patterns - essentially, if someone contributed to project A, what are they likely to contribute to next? Some interesting bits:
+```python
+probability[i] = (probability[i]/projectprobabiliy) * (1 - math.exp(-probability[i]*lowoccpenalty))
+```
+- Uses monotonic confidence attenuation to handle rare co-occurrences
+- Implemented an exponential penalty factor to balance between common and rare associations
+- Helps surface projects that tend to share contributors
+
+### User-User Collaborative Filtering 
+The `UserSimilarityRecommender` finds similar developers based on their contribution patterns. The cool part is how it combines different similarity signals:
+```python
+similarity = (project_weight * project_similarity) + (tag_weight * tag_similarity)
+```
+- Looks at both project overlap and tag preferences
+- Uses binary cosine similarity for contribution patterns
+- Weights different similarity components to get better matches
+
+### Content-Based Tag Recommender
+This one's interesting because it uses TFIDF-weighted tag representations:
+```python
+user_tag_dict[user_id][project_tag] += 1/(math.log(len(project_dict[project_id]['tag'])))
+```
+- Tags are weighted by how specific they are
+- Accounts for both tag frequency and importance
+- Uses cosine similarity between tag profiles
+
+### Trending Score Algorithm
+Implemented a Reddit-style ranking that helps surface promising projects:
+```python
+ranking[i] = math.log10(post_interactions)/(hours_since_post**gravity)
+```
+- Time decay with configurable gravity
+- Logarithmic scaling of interactions
+- Particularly useful for finding active projects
+
+
 ### Core Similarity Calculations
 The system uses several similarity metrics:
 
