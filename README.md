@@ -9,13 +9,13 @@ There's no shortage of open-source projects on GitHub that need contributors, bu
 The platform uses different recommendation approaches for different parts of the user experience:
 
 ### Main Page Recommendations
-- **Content-Based Tag Recommender**: Powers the initial experience where users can select tags they're comfortable with. Uses case-based recommendations to help developers find projects matching their skill level.
+- **Content-Based Tag Recommender**: Heavily weighted for newer users who do not have the data to compute accurate CF reccomendations. In the beggining users will select tags they are interested which will slowly decay with time, but in the intermediary, the system uses case-based recommendations to help developers find projects matching their skill level.
 - **User-User Collaborative Filtering**: The primary recommendation algorithm, using two different similarity calculations:
-  - TFIDF-weighted for handling projects with many tags without diluting their significance
-  - Standard weighting to ensure even heavily-tagged projects maintain appropriate weight in recommendations
+  - TFIDF-weighted allows for tags who are not used often to have a higher weight when compared to tags applied to every item virtually. (Python vs Distilled Learning). These low frequency items allow for more insight into a users interests and thus are weighted higher. 
+  - Standard weighting to ensure even heavily-tagged projects still have weight in recommendations
 
 ### Project Page Recommendations
-- **Association Rule Mining**: Similar to Amazon's "People who contributed to this also contributed to..." feature. When viewing a project, it shows related projects based on co-contribution patterns:
+- **Association Rule Mining**: Similar to Amazon's "People who bought this also bought". When viewing a project, it shows related projects based on co-contribution patterns:
 ```python
 probability[i] = (probability[i]/projectprobabiliy) * (1 - math.exp(-probability[i]*lowoccpenalty))
 ```
@@ -23,20 +23,16 @@ probability[i] = (probability[i]/projectprobabiliy) * (1 - math.exp(-probability
 - Implemented an exponential penalty factor to balance between common and rare associations
 
 ### Learning Path
-- **Trending Score Algorithm**: Powers a dedicated page for solo projects that are good for learning. Helps newcomers find popular learning projects before jumping into team contributions:
+- **Trending Score Algorithm**: Powers a dedicated page for solo projects that are good for learning. This is key as it helps newcomers learn before diving into more complicated projects without consequences.
 ```python
 ranking[i] = math.log10(post_interactions)/(hours_since_post**gravity)
 ```
 - Focuses specifically on solo projects tagged as learning resources
-- Uses time decay to keep content fresh
+- Uses time decay to keep content new and applicable
 - Helps create a stepping stone from learning to contributing
 
 
 ## Technical Details
-
-
-## What's Inside
-This repository contains an early proof of concept for several recommender systems I've been experimenting with. Let's break down each approach and why it matters:
 
 ### Association Rule Mining
 The `AssociationRulesRecommender` looks at co-contribution patterns - essentially, if someone contributed to project A, what are they likely to contribute to next? Some interesting bits:
