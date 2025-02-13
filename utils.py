@@ -33,9 +33,8 @@ def load_data():
                 user_tag_dict[user_id][project_tag] += 1/(math.log(len(project_dict[project_id]['tag'])))
             else:
                 user_tag_dict[user_id][project_tag] = 1/(math.log(len(project_dict[project_id]['tag'])))
+    return project_dict, user_interaction_dict, user_tag_dict
     
-    
-    return project_dict, user_interaction_dict, user_tag_dict 
 def total_compute():
         return x   
 def calculate_similarity_binary(vec1, vec2):
@@ -53,7 +52,6 @@ def calculate_similarity_binary(vec1, vec2):
     similarityscore = dotproduct/(magnitude2*magnitude1)
 
     return similarityscore
-#runTFIDF
 def calculate_similarity_tags(user_tag_profile1, user_tag_profile2):
     dotproduct = 0
     for tag in user_tag_profile1:
@@ -68,6 +66,36 @@ def calculate_similarity_tags(user_tag_profile1, user_tag_profile2):
         
     similarity_score = dotproduct / (magnitude2 * magnitude1)
     return similarity_score
+def createitemdict(userdict):
+    itemuserdict = {}
+    for user_id in userdict:
+        for project_id in userdict[user_id]:
+            if project_id in itemuserdict.keys():
+                itemuserdict[project_id] += [user_id]
+            else:
+                itemuserdict[project_id] = [user_id]
+
+    return itemuserdict
+def precomputesimilarities(projectdict, numberofprecomputes, itemintdict):
+    projectdictsorted = dict(sorted(projectdict.items(), key=lambda x: x[1]['contributor_count'], reverse=True))
+    relationshipdict = {}
+    g=0
+    for i in projectdictsorted:
+        g+=1
+        if g>=numberofprecomputes:
+            break
+        relationshipdict[i]={}
+        for k in projectdict:
+            try:
+         
+                relationshipdict[i][k] = relationshipdict[k][i] #avoids the double calc
+            except:
+                
+                if k==i:
+                    continue
+                else:
+                    relationshipdict[i][k] = calculate_combined_item(k, i, itemintdict, projectdict, 0.7, 0.3)
+    return relationshipdict
 
 def calculate_combined_similarity(user1, user2, user_interaction_dict, user_tag_dict, project_weight=0.5, tag_weight=0.5):
     project_similarity = calculate_similarity_binary(
@@ -78,6 +106,19 @@ def calculate_combined_similarity(user1, user2, user_interaction_dict, user_tag_
     tag_similarity = calculate_similarity_tags(
         user_tag_dict[user1],
         user_tag_dict[user2]
+    )
+    
+    return (project_weight * project_similarity) + (tag_weight * tag_similarity)
+def calculate_combined_item(item1, item2, iterminteractiondict, project_dict, project_weight=0.5, tag_weight=0.5):
+    project_similarity = calculate_similarity_binary(
+        iterminteractiondict[item1],
+        iterminteractiondict[item2]
+    )
+    
+    tag_similarity = calculate_similarity_tags(
+        project_dict[item1]['tags'],
+        project_dict[item2]['tags']
+
     )
     
     return (project_weight * project_similarity) + (tag_weight * tag_similarity)
