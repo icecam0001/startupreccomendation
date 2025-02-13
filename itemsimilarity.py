@@ -1,31 +1,46 @@
-import csv
+from utils import total_compute, load_data, calculate_combined_item, createitemdict, precomputesimilarities
+from heapq import nlargest
 import math
-from utils import load_data, calculate_similarity_binary
+class ItemSimilarityRecommender:
 
-class ItemItemRecommender:
-    
-    def recommend(self, project_id, number_of_recs=10):
-        project_dict, user_interaction_dict, user_tag_dict = load_data()
-        similarity_matrix = {}
-        
-        for other_project_id in project_dict:
-            if other_project_id != project_id:
-                # Compute similarity between projects based on users who interacted with both
-                users_of_project = set(user for user, projects in user_interaction_dict.items() if project_id in projects)
-                users_of_other_project = set(user for user, projects in user_interaction_dict.items() if other_project_id in projects)
-                
-                common_users = users_of_project.intersection(users_of_other_project)
-                
-                similarity_score = calculate_similarity_binary(
-                    [1 for _ in users_of_project], 
-                    [1 for _ in users_of_other_project if _ in common_users]
-                )
-                
-                similarity_matrix[other_project_id] = similarity_score
-        
-        sorted_projects = sorted(similarity_matrix.items(), key=lambda x: x[1], reverse=True)
-        
-        return [project for project, _ in sorted_projects[:number_of_recs]]
+    projectdict, userdict, tagdict = load_data()
+    itemdict = createitemdict(userdict)
+    #precompute 100 most used items similarity dictionaries to make it easier and faster doing this with sparse usecases makes memory 
+    #an issue thus I only did the top 100
+    projectssorted = precomputesimilarities(projectdict, itemdict, 100) 
+    def recommend(self, user_id, n=5):
+        reccomenddict = {}
+
+        for otheritem in projectdict:
+            sum=0
+
+            if otheritem in projectssorted:
+                for item in userdict[user_id]:
+                    if otheritem ==item:
+                        sum=0
+                        break
+                    sum+=projectssorted[otheritem][item]
+                reccomenddict[otheritem] = sum
+            else:
+                for item in userdict[user_id]:
+                    if otheritem ==item:
+                        sum=0
+                        break
+                    else:
+                        sum+=calculate_combined_item(item, otheritem, itemdict, projectdict, 0.7, 0.3)
+                reccomenddict[otheritem] = sum
+        sortedbytopdict = dict(sorted(reccomenddict.items(), key=lambda x: x[1], reverse=True))
+        reccomenderarray=[]
+        k=0
+        for i in sortedbytopdict:
+            reccomenderarray.append(i)
+            k+=1
+            if k>=n:
+                break
+        return reccomenderarray
+            
+
+
 
 
 
