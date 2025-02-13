@@ -9,96 +9,177 @@ There's no shortage of open-source projects on GitHub that need contributors, bu
 The platform uses different recommendation approaches for different parts of the user experience:
 
 ### Main Page Recommendations
-- **Content-Based Tag Recommender**: Heavily weighted for newer users who do not have the data to compute accurate CF reccomendations. In the beggining users will select tags they are interested which will slowly decay with time, but in the intermediary, the system uses case-based recommendations to help developers find projects matching their skill level.
+- **Content-Based Tag Recommender**: Heavily weighted for newer users who do not have the data to compute accurate CF recommendations. In the beginning users select tags they are interested which will slowly decay with time, but in the intermediary, the system uses case-based recommendations to help developers find projects matching their skill level:
+```python
+user_tag_dict[user_id][project_tag] += 1/(math.log(len(project_dict[project_id]['tag'])))
+```
+
+- **Item-Item Collaborative Filtering**: Optimizes recommendations through project similarity analysis:
+```python
+# Precomputed similarities for top projects
+projectssorted = precomputesimilarities(projectdict, itemdict, 100)
+
+# Dynamic calculation for less common projects
+def calculate_combined_item(item1, item2, itemintdict, project_dict, project_weight=0.5, tag_weight=0.5):
+    project_similarity = calculate_similarity_binary(
+        itemintdict[item1],
+        itemintdict[item2]
+    )
+    tag_similarity = calculate_similarity_tags(
+        project_dict[item1]['tags'],
+        project_dict[item2]['tags']
+    )
+    return (project_weight * project_similarity) + (tag_weight * tag_similarity)
+```
+
 - **User-User Collaborative Filtering**: The primary recommendation algorithm, using two different similarity calculations:
-  - TFIDF-weighted allows for tags who are not used often to have a higher weight when compared to tags applied to every item virtually. (Python vs Distilled Learning). These low frequency items allow for more insight into a users interests and thus are weighted higher. 
+  - TFIDF-weighted allows for tags who are not used often to have a higher weight when compared to tags applied to every item virtually. (Python vs Distilled Learning). These low frequency items allow for more insight into a users interests and thus are weighted higher
   - Standard weighting to ensure even heavily-tagged projects still have weight in recommendations
+  - Normalize by contributor count to prevent popularity bias:
+```python
+for item in scoreneighborhood:
+    scoreneighborhood[item] = scoreneighborhood[item]/math.sqrt(projectdict[item]['contributor_count'])
+```
 
 ### Project Page Recommendations
 - **Association Rule Mining**: Similar to Amazon's "People who bought this also bought". When viewing a project, it shows related projects based on co-contribution patterns:
 ```python
-probability[i] = (probability[i]/projectprobabiliy) * (1 - math.exp(-probability[i]*lowoccpenalty))
+def recommend(self, project_id, numberofrecs=10, lowoccpenalty=0.5):
+    totals = {}
+    probability = {}
+    
+    for i in userinteractiondict:
+        if project_id in userinteractiondict[i]:
+            for x in userinteractiondict[i]:
+                totals[x] = totals.get(x, 0) + 1
+                if x != project_id:
+                    probability[x] = probability.get(x, 0) + 1
+        else:
+            for x in userinteractiondict[i]:
+                totals[x] = totals.get(x, 0) + 1
+
+    projectprobabiliy = totals.get(project_id, 0)
+    
+    for i in probability:
+        probability[i] = (probability[i]/projectprobabiliy) * (1 - math.exp(-probability[i]*lowoccpenalty))
 ```
 - Uses monotonic confidence attenuation to handle rare co-occurrences
 - Implemented an exponential penalty factor to balance between common and rare associations
 
 ### Learning Path
-- **Trending Score Algorithm**: Powers a dedicated page for solo projects that are good for learning. This is key as it helps newcomers learn before diving into more complicated projects without consequences.
+- **Trending Score Algorithm**: Powers a dedicated page for solo projects that are good for learning:
 ```python
-ranking[i] = math.log10(post_interactions)/(hours_since_post**gravity)
+def rank_projects(self, gravity=1.5, top_n=10):
+    ranking = {}
+    for i in projectinteractiondict:
+        if projectinteractiondict[i]["solo"] == True:
+            post_timestamp = datetime.datetime.strptime(
+                projectinteractiondict[i]["created_timestamp"], 
+                '%Y-%m-%d %H:%M:%S'
+            )
+            hours_since_post = (datetime.datetime.now() - post_timestamp).total_seconds() / 3600
+            post_interactions = projectinteractiondict[i]["contributor_count"]
+            ranking[i] = math.log10(post_interactions)/(hours_since_post**gravity)
 ```
 - Focuses specifically on solo projects tagged as learning resources
-- Uses time decay to keep content new and applicable
+- Uses time decay to keep content fresh
 - Helps create a stepping stone from learning to contributing
 
-
-## Technical Details
-
-### Association Rule Mining
-The `AssociationRulesRecommender` looks at co-contribution patterns - essentially, if someone contributed to project A, what are they likely to contribute to next? Some interesting bits:
-```python
-probability[i] = (probability[i]/projectprobabiliy) * (1 - math.exp(-probability[i]*lowoccpenalty))
-```
-- Uses monotonic confidence attenuation to handle rare co-occurrences
-- Implemented an exponential penalty factor to balance between common and rare associations
-- Helps surface projects that tend to share contributors
-
-### User-User Collaborative Filtering 
-The `UserSimilarityRecommender` finds similar developers based on their contribution patterns. The cool part is how it combines different similarity signals:
-```python
-similarity = (project_weight * project_similarity) + (tag_weight * tag_similarity)
-```
-- Looks at both project overlap and tag preferences
-- Uses binary cosine similarity for contribution patterns
-- Weights different similarity components to get better matches
-
-### Content-Based Tag Recommender
-This one's interesting because it uses TFIDF-weighted tag representations:
-```python
-user_tag_dict[user_id][project_tag] += 1/(math.log(len(project_dict[project_id]['tag'])))
-```
-- Tags are weighted by how specific they are
-- Accounts for both tag frequency and importance
-- Uses cosine similarity between tag profiles
-
-### Trending Score Algorithm
-Implemented a Reddit-style ranking that helps surface promising projects:
-```python
-ranking[i] = math.log10(post_interactions)/(hours_since_post**gravity)
-```
-- Time decay with configurable gravity
-- Logarithmic scaling of interactions
-- Particularly useful for finding active projects
-
+## Technical Implementation Details
 
 ### Core Similarity Calculations
-The system uses several similarity metrics:
+The system implements several similarity metrics:
 
-1. Tag-Based TFIDF Similarity:
+1. Binary Interaction Similarity:
 ```python
-user_tag_dict[user_id][project_tag] += 1/(math.log(len(project_dict[project_id]['tag'])))
-dotproduct = sum(user_tag_profile2[tag] * user_tag_profile1[tag] for tag in common_tags)
-similarity_score = dotproduct / (magnitude2 * magnitude1)
+def calculate_similarity_binary(vec1, vec2):
+    dotproduct = 0
+    for g in vec1:
+        if g in vec2:
+            dotproduct += 1
+    magnitude1 = math.sqrt(len(vec1))  
+    magnitude2 = math.sqrt(len(vec2))  
+    if magnitude1 * magnitude2 == 0:
+        return 0
+    return dotproduct/(magnitude2*magnitude1)
 ```
 
-2. Binary Interaction Similarity:
+2. Tag-Based TFIDF Similarity:
 ```python
-similarityscore = dotproduct/(magnitude2*magnitude1)
+def calculate_similarity_tags(user_tag_profile1, user_tag_profile2):
+    dotproduct = 0
+    for tag in user_tag_profile1:
+        if tag in user_tag_profile2:
+            dotproduct += user_tag_profile2[tag] * user_tag_profile1[tag]
+    
+    magnitude1 = math.sqrt(sum(value**2 for value in user_tag_profile1.values()))
+    magnitude2 = math.sqrt(sum(value**2 for value in user_tag_profile2.values()))
+    
+    if magnitude1 * magnitude2 == 0:
+        return 0
+    return dotproduct / (magnitude2 * magnitude1)
 ```
 
-3. Combined Similarity with configurable weights:
+3. Combined Similarity with Weighting:
 ```python
-combined = (project_weight * project_similarity) + (tag_weight * tag_similarity)
+def calculate_combined_similarity(user1, user2, user_interaction_dict, user_tag_dict, 
+                                project_weight=0.5, tag_weight=0.5):
+    project_similarity = calculate_similarity_binary(
+        user_interaction_dict[user1],
+        user_interaction_dict[user2]
+    )
+    tag_similarity = calculate_similarity_tags(
+        user_tag_dict[user1],
+        user_tag_dict[user2]
+    )
+    return (project_weight * project_similarity) + (tag_weight * tag_similarity)
 ```
+
+### Performance Optimizations
+
+1. Precomputed Similarities:
+```python
+def precomputesimilarities(projectdict, numberofprecomputes, itemintdict):
+    projectdictsorted = dict(sorted(projectdict.items(), 
+                           key=lambda x: x[1]['contributor_count'], 
+                           reverse=True))
+    relationshipdict = {}
+    g = 0
+    for i in projectdictsorted:
+        g += 1
+        if g >= numberofprecomputes:
+            break
+        relationshipdict[i] = {}
+        for k in projectdict:
+            try:
+                relationshipdict[i][k] = relationshipdict[k][i]
+            except:
+                if k == i:
+                    continue
+                relationshipdict[i][k] = calculate_combined_item(
+                    k, i, itemintdict, projectdict, 0.7, 0.3)
+    return relationshipdict
+```
+
+2. Sparse Optimizations:
+- Compute full similarities only when needed
+- Cache frequent project relationships
+- Normalize user data - users who like many items provide less information about each item
+
+### Cold Start Handling
+- Realistic interaction patterns in test data
+- Balanced distribution across project types
+- Time-based contribution patterns
 
 ### Data Structures
-Projects and interactions follow this structure:
+Projects and interactions use these structures:
 ```python
 project = {
     'id': 'proj001',
     'tags': ['web', 'react'],
     'contributor_count': 45,
-    'created_timestamp': '2024-01-01-14:30:00'
+    'created_timestamp': '2024-01-01-14:30:00',
+    'solo': True
 }
 
 interaction = {
@@ -118,7 +199,30 @@ trending_projects = ranker.rank_projects(gravity=1.5, top_n=10)
 # For project recommendations
 recommender = AssociationRulesRecommender()
 recommendations = recommender.recommend(project_id, numberofrecs=10)
+
+# For item-based recommendations
+item_recommender = ItemSimilarityRecommender()
+similar_projects = item_recommender.recommend(project_id, n=5)
 ```
+
+## Future Enhancements
+1. **Machine Learning Integration**
+- Linear regression for contribution prediction
+- Neural embeddings for project descriptions
+- Automatic difficulty categorization
+- SVD for dimensionality reduction
+- Project space clustering
+
+2. **Advanced Similarity Metrics**
+- Pearson correlation with significance weighting
+- Damped mean recommendations
+- Enhanced stochastic exploration
+- Multi-dimensional scaling
+
+3. **Performance Optimizations**
+- Locality-sensitive hashing
+- Enhanced caching strategies
+- Further sparse matrix optimizations
 
 ## Technical Implementation Notes
 - Built utility functions for data loading and similarity calculations
@@ -126,6 +230,7 @@ recommendations = recommender.recommend(project_id, numberofrecs=10)
 - Handled edge cases like zero divisions and empty vectors
 - Used proper normalization in similarity calculations
 - Designed for modularity to test different approaches
+- Added synthetic data patterns for cold-start handling
+- Implemented sparse optimizations for large-scale calculations
 
-
-The core recommendation engine is working, with each algorithm serving a cool purpose! The focus has been on creating a system that guides developers from learning to contributing while helping project owners find the right contributors.
+The core recommendation engine is working, with each algorithm serving a specific purpose. The focus has been on creating a system that guides developers from learning to contributing while helping project owners find the right contributors.
