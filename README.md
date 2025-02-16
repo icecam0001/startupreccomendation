@@ -1,7 +1,5 @@
-# Open Source Project Recommendation System
-
 ## The Problem
-One of the biggest problems in the CS community is the struggle to get experience. The field is saturated, and actual experience from internships is incredibly difficult to acquire - there just aren't enough spots. It creates this frustrating cycle where internships want developers with experience while simultaneously preventing those developers from getting it. 
+One of the biggest problems in the CS community is the struggle to get experience. The field is saturated, and actual experience from internships is incredibly difficult to get - there just aren't enough spots. It creates this frustrating cycle where companies want interns with experience while simultaneously preventing those developers from getting it. 
 
 There's no shortage of open-source projects on GitHub that need contributors, but there's no streamlined platform for posting and discovering these opportunities. I'm hoping this system not only helps developers find projects to contribute to but also encourages more people to build and share cool things together. I'm hoping in a couple months when this project materializes, we might see an increase in the total number of open-source projects instead of the current negative feedback loop where finding projects is as hard as finding contributors.
 
@@ -9,12 +7,12 @@ There's no shortage of open-source projects on GitHub that need contributors, bu
 The platform uses different recommendation approaches for different parts of the user experience:
 
 ### Main Page Recommendations
-- **Content-Based Tag Recommender**: Heavily weighted for newer users who do not have the data to compute accurate CF recommendations. In the beginning users select tags they are interested which will slowly decay with time, but in the intermediary, the system uses case-based recommendations to help developers find projects matching their skill level:
+- **Content-Based Tag Recommender**: Heavily weighted for newer users who do not have enough data to calculate accurate CF recommendations. In the beggining users select tags they are interested (which will slowly decay with time), but in the intermediary, the system uses case-based recommendations to help developers find projects matching their skill level and interests:
 ```python
 user_tag_dict[user_id][project_tag] += 1/(math.log(len(project_dict[project_id]['tag'])))
 ```
 
-- **Item-Item Collaborative Filtering**: Optimizes recommendations through project similarity analysis:
+- **Item-Item Collaborative Filtering**: Creates recommendations through project similarity analysis:
 ```python
 # Precomputed similarities for top projects
 projectssorted = precomputesimilarities(projectdict, itemdict, 100)
@@ -32,8 +30,8 @@ def calculate_combined_item(item1, item2, itemintdict, project_dict, project_wei
     return (project_weight * project_similarity) + (tag_weight * tag_similarity)
 ```
 
-- **User-User Collaborative Filtering**: The primary recommendation algorithm, using two different similarity calculations:
-  - TFIDF-weighted allows for tags who are not used often to have a higher weight when compared to tags applied to every item virtually. (Python vs Distilled Learning). These low frequency items allow for more insight into a users interests and thus are weighted higher
+- **User-User Collaborative Filtering**: The main recommendation algorithm. It uses two different similarity calculations:
+  - TFIDF-weighted allows for tags who are not used often to have a higher weight when compared to tags applied to almost every item. (Python vs Distilled Learning). These low frequency items allow for more insight into a users interests and thus are weighted higher
   - Standard weighting to ensure even heavily-tagged projects still have weight in recommendations
   - Normalize by contributor count to prevent popularity bias:
 ```python
@@ -64,7 +62,7 @@ def recommend(self, project_id, numberofrecs=10, lowoccpenalty=0.5):
         probability[i] = (probability[i]/projectprobabiliy) * (1 - math.exp(-probability[i]*lowoccpenalty))
 ```
 - Uses monotonic confidence attenuation to handle rare co-occurrences
-- Implemented an exponential penalty factor to balance between common and rare associations
+- Implemented an exponential penalty factor to balance common and rare associations
 
 ### Learning Path
 - **Trending Score Algorithm**: Powers a dedicated page for solo projects that are good for learning:
@@ -81,9 +79,9 @@ def rank_projects(self, gravity=1.5, top_n=10):
             post_interactions = projectinteractiondict[i]["contributor_count"]
             ranking[i] = math.log10(post_interactions)/(hours_since_post**gravity)
 ```
-- Focuses specifically on solo projects tagged as learning resources
-- Uses time decay to keep content fresh
-- Helps create a stepping stone from learning to contributing
+- Focuses on solo projects posted to help new users learn
+- Uses time decay to keep content new
+- Helps create a stepping stone for new users to ease into contributing
 
 ## Technical Implementation Details
 
@@ -120,7 +118,7 @@ def calculate_similarity_tags(user_tag_profile1, user_tag_profile2):
     return dotproduct / (magnitude2 * magnitude1)
 ```
 
-3. Combined Similarity with Weighting:
+3. Hybrid Approach With Weights For Each
 ```python
 def calculate_combined_similarity(user1, user2, user_interaction_dict, user_tag_dict, 
                                 project_weight=0.5, tag_weight=0.5):
@@ -161,13 +159,13 @@ def precomputesimilarities(projectdict, numberofprecomputes, itemintdict):
     return relationshipdict
 ```
 
-2. Sparse Optimizations:
+2. Optimizations:
 - Compute full similarities only when needed
-- Cache frequent project relationships
-- Normalize user data - users who like many items provide less information about each item
+- Cache popular project relationships
+- Normalize user data: users who like many items naturally provide less information about each
 
 ### Cold Start Handling
-- Realistic interaction patterns in test data
+- Realistic interaction patterns in a baseline dataset
 - Balanced distribution across project types
 - Time-based contribution patterns
 
@@ -190,7 +188,7 @@ interaction = {
 ```
 
 ## Usage
-Each recommender can be used independently:
+Each recommender can be used on its own:
 ```python
 # For trending projects
 ranker = TrendingReccomender()
@@ -205,8 +203,8 @@ item_recommender = ItemSimilarityRecommender()
 similar_projects = item_recommender.recommend(project_id, n=5)
 ```
 
-## Future Enhancements
-1. **Machine Learning Integration**
+## Future Plans
+1. **Machine Learning???**
 - Linear regression for contribution prediction
 - Neural embeddings for project descriptions
 - Automatic difficulty categorization
@@ -214,9 +212,8 @@ similar_projects = item_recommender.recommend(project_id, n=5)
 - Project space clustering
 
 2. **Advanced Similarity Metrics**
-- Pearson correlation with significance weighting
-- Damped mean recommendations
-- Enhanced stochastic exploration
+- Pearson correlation with weighting
+- Integrated randomness to make recommendations more diverse (finding hidden gems)
 - Multi-dimensional scaling
 
 3. **Performance Optimizations**
@@ -225,12 +222,12 @@ similar_projects = item_recommender.recommend(project_id, n=5)
 - Further sparse matrix optimizations
 
 ## Technical Implementation Notes
-- Built utility functions for data loading and similarity calculations
+- Built functions for data loading and similarity calculations
 - Implemented caching for similarity matrices where needed
-- Handled edge cases like zero divisions and empty vectors
-- Used proper normalization in similarity calculations
+- Handled edge cases like empty vectors
+- Normalized vectors in similarity calculations
 - Designed for modularity to test different approaches
 - Added synthetic data patterns for cold-start handling
 - Implemented sparse optimizations for large-scale calculations
 
-The core recommendation engine is working, with each algorithm serving a specific purpose. The focus has been on creating a system that guides developers from learning to contributing while helping project owners find the right contributors.
+The core recommendation engine is working, with each algorithm serving a cool purpose! The focus has been on creating a system that guides developers from learning to contributing while also helping project owners find the perfect contributors.
