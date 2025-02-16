@@ -7,7 +7,7 @@ There's no shortage of open-source projects on GitHub that need contributors, bu
 The platform uses different recommendation approaches for different parts of the user experience:
 
 ### Main Page Recommendations
-- **Content-Based Tag Recommender**: Heavily weighted for newer users who do not have enough data to calculate accurate CF recommendations. In the beggining users select tags they are interested (which will slowly decay with time), but in the intermediary, the system uses case-based recommendations to help developers find projects matching their skill level and interests:
+- **Content-Based Tag Recommender**: Heavily weighted for newer users who do not have enough data to calculate accurate CF recommendations. In the beginning users select tags they are interested (which will slowly decay with time), but in the intermediary, the system uses case-based recommendations to help developers find projects matching their skill level and interests:
 ```python
 user_tag_dict[user_id][project_tag] += 1/(math.log(len(project_dict[project_id]['tag'])))
 ```
@@ -203,23 +203,6 @@ item_recommender = ItemSimilarityRecommender()
 similar_projects = item_recommender.recommend(project_id, n=5)
 ```
 
-## Future Plans
-1. **Machine Learning???**
-- Linear regression for contribution prediction
-- Neural embeddings for project descriptions
-- Automatic difficulty categorization
-- SVD for dimensionality reduction
-- Project space clustering
-
-2. **Advanced Similarity Metrics**
-- Pearson correlation with weighting
-- Integrated randomness to make recommendations more diverse (finding hidden gems)
-- Multi-dimensional scaling
-
-3. **Performance Optimizations**
-- Locality-sensitive hashing
-- Enhanced caching strategies
-- Further sparse matrix optimizations
 
 ## Technical Implementation Notes
 - Built functions for data loading and similarity calculations
